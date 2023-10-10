@@ -22,13 +22,14 @@ class GetDataThread(threading.Thread):
         self.name = name
 
     def run(self):
+        search_by_mid_list()
         schedule.every(5).seconds.do(search_by_mid_list)
         while isKeepLive:
             schedule.run_pending()  # 运行所有可以运行的任务
             time.sleep(1)
 
-thread = GetDataThread(name="get_data", id=1)
 
+thread = GetDataThread(name="get_data", id=1)
 
 
 def search_by_mid(mid: str):
@@ -54,8 +55,10 @@ def start_schedule_task():
     # else:
     #     ## 提示把要查的mid放进wos.ini里，用换行来区分
     #     open(iniPath, mode='x')
-    global isKeepLive
-    isKeepLive = False
+    global isKeepLive, thread
+    isKeepLive = True
+    if not thread.is_alive():
+        thread = GetDataThread(name="get_data", id=1)
     thread.start()
 
 
