@@ -45,16 +45,16 @@ def search_by_mid(mid: str):
 
 def search_by_mid_list():
     print("search_by_mid_list")
-
-
-def start_schedule_task():
-    print("start_schedule_task")
     # if os.path.exists(iniPath):
     #     with open(iniPath) as f:
     #         print(f)
     # else:
     #     ## 提示把要查的mid放进wos.ini里，用换行来区分
     #     open(iniPath, mode='x')
+
+
+def start_schedule_task():
+    print("start_schedule_task")
     global isKeepLive, thread
     isKeepLive = True
     if not thread.is_alive():
@@ -67,12 +67,6 @@ def stop_schedule_task():
     global isKeepLive
     isKeepLive = False
     thread.join()
-
-
-def override_ini():
-    if os.path.exists(iniPath):
-        with open(iniPath) as f:
-            print(f)
 
 
 def create_window():
