@@ -166,7 +166,7 @@ def stop_schedule_task():
 
 def create_window():
     window.title("看看谁在直播")
-    window.geometry('400x280')
+    window.geometry('350x260')
     create_menu()
     create_tree_view()
     label = Label(window, textvariable=labelText)
@@ -188,7 +188,7 @@ def create_menu():
 
 
 def create_tree_view():
-    treeView.column('1', width=100, anchor='center')
+    treeView.column('1', width=50, anchor='center')
     treeView.column('2', width=100, anchor='center')
     treeView.column('3', width=100, anchor='center')
     treeView.column('4', width=100, anchor='center')
