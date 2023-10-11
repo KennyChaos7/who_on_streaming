@@ -1,1 +1,1 @@
-Pyinstaller  --onefile -w --icon=fallout4.ico  --add-data "./wbi.py" --paths=venv\Lib\site-packages --name=WOS main.py
+Pyinstaller  --onefile -w --icon=fallout4.ico --paths=venv\Lib\site-packages --name=DD监控台 who_on_streaming.py

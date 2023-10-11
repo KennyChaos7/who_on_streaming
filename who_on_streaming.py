@@ -25,7 +25,7 @@ class GetDataThread(threading.Thread):
 
     def run(self):
         get_data()
-        schedule.every(60).seconds.do(get_data)
+        schedule.every(3).minutes.do(get_data)
         while isKeepLive:
             schedule.run_pending()  # 运行所有可以运行的任务
             time.sleep(1)
