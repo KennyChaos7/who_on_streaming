@@ -3,6 +3,7 @@ from hashlib import md5
 import urllib.parse
 import time
 import requests
+import os
 
 mixinKeyEncTab = [
     46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49,
@@ -10,6 +11,17 @@ mixinKeyEncTab = [
     61, 26, 17, 0, 1, 60, 51, 30, 4, 22, 25, 54, 21, 56, 59, 6, 63, 57, 62, 11,
     36, 20, 34, 44, 52
 ]
+
+
+os.environ['NO_PROXY'] = 'https://api.bilibili.com'
+reqHeaders = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+    'Content-Encoding': 'gzip',
+    'Accept': 'application/json',
+    'Accept-Language': 'zh-CN,zh;q=0.9',
+    'Connection': 'close'
+}
+
 
 def getMixinKey(orig: str):
     '对 imgKey 和 subKey 进行字符顺序打乱编码'
@@ -61,6 +73,47 @@ def get_wts_w_rid():
     # print(signed_params)
     print(query)
     return signed_params['wts'], signed_params['w_rid']
+
+
+def get_acc_info(mid: str):
+    reqUrl = 'https://api.bilibili.com/x/space/wbi/acc/info'
+    wts, w_rid = get_wts_w_rid()
+    req_params = {
+        "mid": mid,
+        'w_rid': w_rid,
+        'wts': wts
+    }
+    response = requests.get(url=reqUrl, params=req_params, headers=reqHeaders)
+    print(response.json())
+    return response
+
+
+def get_user_cards(uids: str):
+    reqUrl = 'https://api.vc.bilibili.com/account/v1/user/cards'
+    wts, w_rid = get_wts_w_rid()
+    req_params = {
+        "uids": uids,
+        'w_rid': w_rid,
+        'wts': wts
+    }
+    response = requests.get(url=reqUrl, params=req_params, headers=reqHeaders)
+    print(response)
+    return response
+
+
+def get_status_info_by_uids(uids_list: list):
+    reqUrl = 'https://api.live.bilibili.com/room/v1/Room/get_status_info_by_uids'
+    wts, w_rid = get_wts_w_rid()
+    req_params = {
+        "uids[]": uids_list,
+        'w_rid': w_rid,
+        'wts': wts
+    }
+
+    response = requests.get(url=reqUrl, params=req_params, headers=reqHeaders)
+    print(response)
+    return response
+
 
 
 if __name__ == '__main__':

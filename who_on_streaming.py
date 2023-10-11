@@ -1,25 +1,16 @@
-import os, requests, time, threading
-import tkinter
+import os
+import threading
+import time
 from tkinter import Tk, ttk, Menu
 from typing import Optional
 
 import schedule
+
 import wbi
 
 isKeepLive = True
 iniPath = os.getcwd() + '/wos.ini'
-os.environ['NO_PROXY'] = 'https://api.bilibili.com'
-reqUrl = 'https://api.bilibili.com/x/space/wbi/acc/info'
-reqHeaders = {
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
-    'Content-Encoding': 'gzip',
-    'Accept': 'application/json',
-    'Accept-Language': 'zh-CN,zh;q=0.9',
-    'Connection': 'close'
-}
 columns = ('1', '2', '3', '4')
-wts = ''
-w_rid = ''
 errorCode = 0
 errorMsg = ''
 window = Tk()
@@ -33,8 +24,8 @@ class GetDataThread(threading.Thread):
         self.name = name
 
     def run(self):
-        search_by_mid_list()
-        schedule.every(60).seconds.do(search_by_mid_list)
+        get_data()
+        schedule.every(60).seconds.do(get_data)
         while isKeepLive:
             schedule.run_pending()  # 运行所有可以运行的任务
             time.sleep(1)
@@ -55,16 +46,14 @@ class Liver:
             "is_on_streaming":"%s",
             "room_id":"%s"
         }
-        """ %(self.name, self.mid, self.is_on_streaming, self.room_id)
+        """ % (self.name, self.mid, self.is_on_streaming, self.room_id)
 
     def __repr__(self):
         return self.name
 
-
     @staticmethod
     def keys():
         return ('name', 'mid', 'is_on_streaming', 'room_id')
-
 
     def __getitem__(self, item):
         return getattr(self, item)
@@ -73,15 +62,8 @@ class Liver:
 thread = GetDataThread(name="get_data", id=1)
 
 
-def search_by_mid(mid: str) -> Optional[Liver]:
-    global wts, w_rid
-    wts, w_rid = wbi.get_wts_w_rid()
-    req_params = {
-        "mid": mid,
-        'w_rid': w_rid,
-        'wts': wts
-    }
-    response = requests.get(url=reqUrl, params=req_params, headers=reqHeaders)
+def search_one_by_mid(mid: str) -> Optional[Liver]:
+    response = wbi.get_acc_info(mid=mid)
     print(response.json())
     if response.json()['code'] == 0:
         data_json = response.json()['data']
@@ -102,23 +84,58 @@ def search_by_mid(mid: str) -> Optional[Liver]:
         return None
 
 
-def search_by_mid_list():
-    # global wts, w_rid
-    # wts, w_rid = wbi.get_wts_w_rid()
-    # print("search_by_mid_list")
-    up_info_list = []
-    empty_tree_view()
+def search_multi_by_mid(mids_list: list) -> Optional[list]:
+    response = wbi.get_status_info_by_uids(mids_list)
+    print(response.json())
+    if response.json()['code'] == 0:
+        up_info_list = []
+        rsp_json = response.json()
+        data_json = rsp_json['data']
+        for mid in mids_list:
+            if mid in data_json:
+                room_json = data_json[mid]
+                is_on_streaming = False
+                if room_json['live_status'] == 1:
+                    is_on_streaming = True
+                up_info = Liver(room_json['uname'], str(room_json['uid']), is_on_streaming, str(room_json['room_id']))
+                print(up_info)
+                up_info_list.append(up_info)
+        return up_info_list
+    else:
+        global errorCode, errorMsg
+        errorCode = "错误码" + str(response.json()['code'])
+        errorMsg = "接口" + response.json()['message']
+        return None
+
+
+def get_all_mids_from_file():
+    mids_str = r""
+    mids_list = []
     if not os.path.exists(iniPath):
         # 提示把要查的mid放进wos.ini里，用换行来区分
         open(iniPath, mode='x')
     with open(iniPath) as f:
         str_line = f.readline().replace("\n", '')
         while len(str_line) > 0:
-            up_info = search_by_mid(str_line)
-            if up_info is not None:
-                up_info_list.append(dict(up_info))
+            mids_list.append(str_line)
+            mids_str += (str_line + ',')
             str_line = f.readline().replace("\n", '')
-    print(up_info_list)
+    return mids_str[:-1], mids_list
+
+
+def get_data():
+    empty_tree_view()
+    up_info_list = []
+
+    # 用单个查询接口
+    # mids_str, _ = get_all_mids_from_file()
+    # for mid in mids:
+    #     up_info = search_one_by_mid(mid)
+    #     up_info_list.append(up_info)
+    # update_tree_view(up_info_list)
+    # 用多个同时查询接口
+    _, mids_list = get_all_mids_from_file()
+    up_info_list = search_multi_by_mid(mids_list)
     update_tree_view(up_info_list)
 
 
@@ -155,7 +172,7 @@ def create_menu():
     menu_config.add_command(label='停止', command=stop_schedule_task)
     menu_config.add_separator()
     menubar.add_cascade(label='选项', menu=menu_config)
-    menubar.add_cascade(label='刷新', command=search_by_mid_list)
+    menubar.add_cascade(label='刷新', command=get_data)
     menubar.add_cascade(label='test', command=test)
     window.config(menu=menubar)
 
@@ -199,7 +216,7 @@ def empty_tree_view():
 
 
 def test():
-    treeView.insert('', 'end', values=[len(treeView.get_children()),errorMsg, errorCode, ' ---- '])
+    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- '])
     treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- '])
     treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- '])
     treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- '])
@@ -301,4 +318,5 @@ def test():
 
 if __name__ == '__main__':
     create_window()
+    # get_all_mids_str_from_file()
     # search_by_mid('117906')
