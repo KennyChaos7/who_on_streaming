@@ -1,7 +1,7 @@
 import os
 import threading
 import time
-from tkinter import Tk, ttk, Menu
+from tkinter import Tk, ttk, Menu, StringVar, Label
 from typing import Optional
 
 import schedule
@@ -15,7 +15,8 @@ errorCode = 0
 errorMsg = ''
 window = Tk()
 treeView = ttk.Treeview(window, columns=columns, show='headings')
-
+autoTaskCount = 0
+labelText = StringVar()
 
 class GetDataThread(threading.Thread):
     def __init__(self, id, name):
@@ -24,6 +25,8 @@ class GetDataThread(threading.Thread):
         self.name = name
 
     def run(self):
+        global autoTaskCount
+        autoTaskCount = 0
         get_data()
         schedule.every(3).minutes.do(get_data)
         while isKeepLive:
@@ -125,6 +128,9 @@ def get_all_mids_from_file():
 
 def get_data():
     empty_tree_view()
+    global autoTaskCount
+    autoTaskCount = autoTaskCount + 1
+    update_label_text()
     up_info_list = []
 
     # 用单个查询接口
@@ -151,17 +157,21 @@ def start_schedule_task():
 
 def stop_schedule_task():
     print("stop_schedule_task")
-    global isKeepLive
+    global isKeepLive, autoTaskCount
     isKeepLive = False
+    autoTaskCount = 0
     thread.join()
     window.title("看看谁在直播")
 
 
 def create_window():
     window.title("看看谁在直播")
-    window.geometry('400x250')
+    window.geometry('400x280')
     create_menu()
     create_tree_view()
+    label = Label(window, textvariable=labelText)
+        # label.config(font=("Courier", 14))
+    label.grid()
     window.mainloop()
 
 
@@ -207,6 +217,10 @@ def update_tree_view(up_info_list):
     else:
         treeView.insert('', 'end', values=['---', errorMsg, errorCode, ' ---- '])
         treeView.grid()
+
+
+def update_label_text():
+    labelText.set("已经自动执行了" + str(autoTaskCount) + "次监控刷新")
 
 
 def empty_tree_view():
