@@ -32,6 +32,7 @@ def encWbi(params: dict, img_key: str, sub_key: str):
     params['w_rid'] = wbi_sign
     return params
 
+
 def getWbiKeys():
     '获取最新的 img_key 和 sub_key'
     resp = requests.get('https://api.bilibili.com/x/web-interface/nav')
@@ -42,6 +43,7 @@ def getWbiKeys():
     img_key = img_url.rsplit('/', 1)[1].split('.')[0]
     sub_key = sub_url.rsplit('/', 1)[1].split('.')[0]
     return img_key, sub_key
+
 
 def get_wts_w_rid():
     img_key, sub_key = getWbiKeys()
@@ -56,9 +58,9 @@ def get_wts_w_rid():
         sub_key=sub_key
     )
     query = urllib.parse.urlencode(signed_params)
-    print(signed_params)
+    # print(signed_params)
     print(query)
-    return  signed_params['wts'], signed_params['w_rid']
+    return signed_params['wts'], signed_params['w_rid']
 
 
 if __name__ == '__main__':
