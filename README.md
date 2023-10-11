@@ -15,7 +15,7 @@
    - 具体配置可以参考**wos.ini**
 
 ## 源码相关
-[特别感谢@bilibili-API的开源b站api](!https://github.com/SocialSisterYi/bilibili-API-collect/)
+[特别感谢@bilibili-API的开源b站api](https://github.com/SocialSisterYi/bilibili-API-collect/)
 - api请求相关查看wbi.py
 - gui相关查看who_on_streaming.py
 
