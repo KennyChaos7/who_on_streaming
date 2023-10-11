@@ -18,6 +18,8 @@ treeView = ttk.Treeview(window, columns=columns, show='headings')
 autoTaskCount = 0
 labelText = StringVar()
 
+
+# 线程类
 class GetDataThread(threading.Thread):
     def __init__(self, id, name):
         threading.Thread.__init__(self)
@@ -28,13 +30,16 @@ class GetDataThread(threading.Thread):
         global autoTaskCount
         autoTaskCount = 0
         get_data()
+        # 定时任务3分钟
         schedule.every(3).minutes.do(get_data)
         while isKeepLive:
             schedule.run_pending()  # 运行所有可以运行的任务
             time.sleep(1)
 
 
+# up主类
 class Liver:
+    # （up名称，mid/uid，是否已经开播，直播房间号）
     def __init__(self, name, mid, is_on_streaming, room_id):
         self.name = name
         self.mid = mid
@@ -65,6 +70,7 @@ class Liver:
 thread = GetDataThread(name="get_data", id=1)
 
 
+# 通过单一mid查询用户信息
 def search_one_by_mid(mid: str) -> Optional[Liver]:
     response = wbi.get_acc_info(mid=mid)
     print(response.json())
@@ -87,6 +93,7 @@ def search_one_by_mid(mid: str) -> Optional[Liver]:
         return None
 
 
+# 通过同时查询多个用户信息
 def search_multi_by_mid(mids_list: list) -> Optional[list]:
     response = wbi.get_status_info_by_uids(mids_list)
     print(response.json())
@@ -111,6 +118,7 @@ def search_multi_by_mid(mids_list: list) -> Optional[list]:
         return None
 
 
+# 从ini文件终获得mid列表
 def get_all_mids_from_file():
     mids_str = r""
     mids_list = []
@@ -126,6 +134,7 @@ def get_all_mids_from_file():
     return mids_str[:-1], mids_list
 
 
+# 查询数据
 def get_data():
     empty_tree_view()
     global autoTaskCount
@@ -145,6 +154,7 @@ def get_data():
     update_tree_view(up_info_list)
 
 
+# 开启定时任务
 def start_schedule_task():
     print("start_schedule_task")
     global isKeepLive, thread
@@ -155,6 +165,7 @@ def start_schedule_task():
     window.title("开播监控已经启动")
 
 
+# 关闭定时任务
 def stop_schedule_task():
     print("stop_schedule_task")
     global isKeepLive, autoTaskCount
@@ -164,6 +175,7 @@ def stop_schedule_task():
     window.title("看看谁在直播")
 
 
+# 创建窗口载体
 def create_window():
     window.title("看看谁在直播")
     window.geometry('350x260')
@@ -175,6 +187,7 @@ def create_window():
     window.mainloop()
 
 
+# 创建选项卡
 def create_menu():
     menubar = Menu(window)
     menu_config = Menu(menubar, tearoff=0)
@@ -187,6 +200,7 @@ def create_menu():
     window.config(menu=menubar)
 
 
+# 创建列表视图
 def create_tree_view():
     treeView.column('1', width=50, anchor='center')
     treeView.column('2', width=100, anchor='center')
@@ -201,6 +215,7 @@ def create_tree_view():
     # scrollbar.grid(row=0, column=1, sticky='ns')
 
 
+# 更新列表视图
 def update_tree_view(up_info_list):
     if len(up_info_list) > 0:
         index = 0
@@ -219,16 +234,19 @@ def update_tree_view(up_info_list):
         treeView.grid()
 
 
+# 更新计数文本
 def update_label_text():
     labelText.set("已经自动执行了" + str(autoTaskCount) + "次监控刷新")
 
 
+# 清空列表视图
 def empty_tree_view():
     item_list = treeView.get_children()
     for item in item_list:
         treeView.delete(item)
 
 
+# TEST
 def test():
     treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- '])
     treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- '])
