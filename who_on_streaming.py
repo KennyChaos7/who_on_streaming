@@ -174,6 +174,13 @@ def stop_schedule_task():
     window.title("看看谁在直播")
 
 
+# 弹窗显示
+def show_message_content(event):
+    for item in treeView.selection():
+        up_info = treeView.item(item, "values")
+        messagebox.showinfo("直播房间号", up_info[4])
+
+
 # 创建窗口载体
 def create_window():
     window.title("看看谁在直播")
@@ -212,6 +219,7 @@ def create_tree_view():
     # scrollbar = ttk.Scrollbar(window, orient=tkinter.VERTICAL, command=treeView.yview)
     # treeView.configure(yscrollcommand=scrollbar.set)
     # scrollbar.grid(row=0, column=1, sticky='ns')
+    treeView.bind("<Double-1>", show_message_content)
 
 
 # 更新列表视图
@@ -232,9 +240,6 @@ def update_tree_view(up_info_list):
         treeView.insert('', 'end', values=['---', errorMsg, errorCode, ' ---- '])
         treeView.grid()
 
-
-def get_sort_key(item):
-    return item
 
 
 # 更新计数文本
