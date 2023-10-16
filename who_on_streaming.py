@@ -1,21 +1,13 @@
 import os
 import threading
 import time
-from tkinter import Tk, ttk, Menu, StringVar, Label, messagebox
-from typing import Optional
+import winsound
+import tkinter
+from tkinter import StringVar, IntVar, Tk, ttk, Menu, Label, messagebox, Button
+from ttkwidgets import CheckboxTreeview
+from typing import Optional, Any
 import schedule
 import wbi
-
-
-isKeepLive = True
-iniPath = os.getcwd() + '/wos.ini'
-columns = ('1', '2', '3', '4')
-errorCode = 0
-errorMsg = ''
-window = Tk()
-treeView = ttk.Treeview(window, columns=columns, show='headings')
-autoTaskCount = 0
-labelText = StringVar()
 
 
 # 线程类
@@ -66,6 +58,18 @@ class Liver:
         return getattr(self, item)
 
 
+isKeepLive = True
+iniPath = os.getcwd() + '/wos.ini'
+columns = ('#1', '#2', '#3', '#4')
+checkedList = []
+oldUpInfoList = []
+errorCode = 0
+errorMsg = ''
+rootWindow = Tk()
+# treeView = ttk.Treeview(window, columns=columns, show='headings')
+treeView = CheckboxTreeview(rootWindow, columns=columns, show=('headings', 'tree'))
+autoTaskCount = 0
+labelText = StringVar()
 thread = GetDataThread(name="get_data", id=1)
 
 
@@ -135,8 +139,8 @@ def get_all_mids_from_file():
 
 # 查询数据
 def get_data():
-    empty_tree_view()
-    global autoTaskCount
+    clear_tree_view()
+    global autoTaskCount, oldUpInfoList
     autoTaskCount = autoTaskCount + 1
     update_label_text()
     up_info_list = []
@@ -146,11 +150,14 @@ def get_data():
     # for mid in mids:
     #     up_info = search_one_by_mid(mid)
     #     up_info_list.append(up_info)
-    # update_tree_view(up_info_list)
     # 用多个同时查询接口
     _, mids_list = get_all_mids_from_file()
     up_info_list = search_multi_by_mid(mids_list)
-    update_tree_view(up_info_list)
+
+    # 检查是否需要进行提醒
+    check_alert_state_and_pop(up_info_list)
+    insert_tree_view(up_info_list)
+    oldUpInfoList = up_info_list
 
 
 # 开启定时任务
@@ -161,7 +168,7 @@ def start_schedule_task():
     if not thread.is_alive():
         thread = GetDataThread(name="get_data", id=1)
     thread.start()
-    window.title("开播监控已经启动")
+    rootWindow.title("开播监控已经启动")
 
 
 # 关闭定时任务
@@ -171,7 +178,7 @@ def stop_schedule_task():
     isKeepLive = False
     autoTaskCount = 0
     thread.join()
-    window.title("看看谁在直播")
+    rootWindow.title("看看谁在直播")
 
 
 # 弹窗显示
@@ -183,47 +190,61 @@ def show_message_content(event):
 
 # 创建窗口载体
 def create_window():
-    window.title("看看谁在直播")
-    window.geometry('350x260')
+    rootWindow.title("看看谁在直播")
+    rootWindow.geometry('420x260')
+    rootWindow.bind("<Destroy>", rootWindow.destroy)
     create_menu()
     create_tree_view()
-    label = Label(window, textvariable=labelText)
+    label = Label(rootWindow, textvariable=labelText)
     # label.config(font=("Courier", 14))
     label.grid()
-    window.mainloop()
+    rootWindow.mainloop()
 
 
 # 创建选项卡
 def create_menu():
-    menubar = Menu(window)
+    menubar = Menu(rootWindow)
     menu_config = Menu(menubar, tearoff=0)
     menu_config.add_command(label='开启', command=start_schedule_task)
     menu_config.add_command(label='停止', command=stop_schedule_task)
     menu_config.add_separator()
     menubar.add_cascade(label='选项', menu=menu_config)
     menubar.add_cascade(label='刷新', command=get_data)
-    menubar.add_cascade(label='test', command=test)
-    window.config(menu=menubar)
+    # menubar.add_cascade(label='test_insert', command=test_insert)
+    # menubar.add_cascade(label='test_update', command=test_update)
+    rootWindow.config(menu=menubar)
 
 
 # 创建列表视图
 def create_tree_view():
-    treeView.column('1', width=50, anchor='center')
-    treeView.column('2', width=100, anchor='center')
-    treeView.column('3', width=100, anchor='center')
-    treeView.column('4', width=100, anchor='center')
-    treeView.heading('1', text='序号')
-    treeView.heading('2', text='up名称')
-    treeView.heading('3', text='uid/mid')
-    treeView.heading('4', text='是否直播中')
-    # scrollbar = ttk.Scrollbar(window, orient=tkinter.VERTICAL, command=treeView.yview)
-    # treeView.configure(yscrollcommand=scrollbar.set)
-    # scrollbar.grid(row=0, column=1, sticky='ns')
+    treeView.column('#0', width=70, anchor='center')
+    treeView.column('#1', width=50, anchor='center')
+    treeView.column('#1', width=50, anchor='center')
+    treeView.column('#2', width=100, anchor='center')
+    treeView.column('#3', width=100, anchor='center')
+    treeView.column('#4', width=100, anchor='center')
+    treeView.heading('#0', text='上播提醒')
+    treeView.heading('#1', text='序号')
+    treeView.heading('#2', text='up名称')
+    treeView.heading('#3', text='uid/mid')
+    treeView.heading('#4', text='是否直播中')
     treeView.bind("<Double-1>", show_message_content)
 
 
+# 自定义弹窗
+def create_pop_up_window(title, msg):
+    pop_up_window = tkinter.Toplevel(rootWindow)
+    pop_up_window.title(title)
+    pop_up_window.geometry('220x80')
+    msg_label = Label(pop_up_window, text=msg)
+    btn_confirm = Button(pop_up_window, text="确认", command=pop_up_window.destroy)
+    msg_label.pack()
+    btn_confirm.pack()
+    winsound.PlaySound("SystemAsterisk", winsound.SND_ALIAS)
+
+
 # 更新列表视图
-def update_tree_view(up_info_list):
+def insert_tree_view(up_info_list):
     if len(up_info_list) > 0:
         index = 0
         for up_info in up_info_list:
@@ -234,12 +255,14 @@ def update_tree_view(up_info_list):
                 is_on_streaming = '直播中'
             item = [index, up_info['name'], up_info['mid'], is_on_streaming, up_info['room_id']]
             index = index + 1
-            treeView.insert('', 'end', values=item)
+            treeView.insert('', 'end', iid=up_info['mid'], values=item)
+            for checked in checkedList:
+                if up_info['mid'] == checked:
+                    treeView.change_state(item=up_info['mid'], state='checked')
             treeView.grid()
     else:
         treeView.insert('', 'end', values=['---', errorMsg, errorCode, ' ---- '])
         treeView.grid()
-
 
 
 # 更新计数文本
@@ -248,111 +271,48 @@ def update_label_text():
 
 
 # 清空列表视图
-def empty_tree_view():
+def clear_tree_view():
+    global checkedList
+    checkedList = treeView.get_checked()
     item_list = treeView.get_children()
     for item in item_list:
         treeView.delete(item)
 
 
+# 查看是否已经上播并且进行提醒
+def check_alert_state_and_pop(up_info_list):
+    for checked in checkedList:
+        up_info = get_item_from_list(checked, up_info_list)
+        old_up_info = get_item_from_list(checked, oldUpInfoList)
+        if up_info and old_up_info and up_info['is_on_streaming'] != old_up_info['is_on_streaming']:
+            # 提醒上播
+            if up_info['is_on_streaming']:
+                create_pop_up_window('上播提醒', up_info['name'] + "上播了")
+            # 提醒下播
+            #     create_pop_up_window('下播提醒', up_info['name'] + "下播了")
+
+
+# 查找元素
+def get_item_from_list(mid, up_info_list) -> Optional[Any]:
+    for up_info in up_info_list:
+        if up_info['mid'] == mid:
+            return up_info
+    return None
+
+
 # TEST
-def test():
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', ' !!!!!! '])
+def test_insert():
+    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', 123])
+    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', 123])
+    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', 123])
+    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', 123])
+    treeView.grid()
+def test_update():
+    clear_tree_view()
+    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, '直播中', 123])
+    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', 123])
+    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', 123])
+    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', 123])
     treeView.grid()
 
 
@@ -363,3 +323,4 @@ if __name__ == '__main__':
     # str_l = list()
     # str_l.append("117906")
     # search_multi_by_mid(str_l)
+    # create_pop_up_window("aaaa", "asdjkasdhaksdhaksdhaskdhkasdhlada")
