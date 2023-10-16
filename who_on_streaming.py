@@ -240,7 +240,7 @@ def create_pop_up_window(title, msg):
     btn_confirm = Button(pop_up_window, text="确认", command=pop_up_window.destroy)
     msg_label.pack()
     btn_confirm.pack()
-    winsound.PlaySound("SystemAsterisk", winsound.SND_ALIAS)
+    winsound.PlaySound("SystemAsterisk", winsound.SND_ALIAS or winsound.SND_ASYNC)
 
 
 # 更新列表视图
