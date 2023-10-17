@@ -142,7 +142,7 @@ def get_data():
     clear_tree_view()
     global autoTaskCount, oldUpInfoList
     autoTaskCount = autoTaskCount + 1
-    update_label_text()
+    update_label_text("已经自动执行了" + str(autoTaskCount) + "次监控刷新")
     up_info_list = []
 
     # 用单个查询接口
@@ -179,6 +179,7 @@ def stop_schedule_task():
     autoTaskCount = 0
     thread.join()
     rootWindow.title("看看谁在直播")
+    update_label_text("自动执行已停止")
 
 
 # 弹窗显示
@@ -193,6 +194,7 @@ def create_window():
     rootWindow.title("看看谁在直播")
     rootWindow.geometry('420x260')
     rootWindow.bind("<Destroy>", rootWindow.destroy)
+    rootWindow.protocol("WM_DELETE_WINDOW", destroy_window)
     create_menu()
     create_tree_view()
     label = Label(rootWindow, textvariable=labelText)
@@ -204,14 +206,9 @@ def create_window():
 # 创建选项卡
 def create_menu():
     menubar = Menu(rootWindow)
-    menu_config = Menu(menubar, tearoff=0)
-    menu_config.add_command(label='开启', command=start_schedule_task)
-    menu_config.add_command(label='停止', command=stop_schedule_task)
-    menu_config.add_separator()
-    menubar.add_cascade(label='选项', menu=menu_config)
+    menubar.add_cascade(label='开启定时任务', command=start_schedule_task)
+    menubar.add_cascade(label='停止定时任务', command=stop_schedule_task)
     menubar.add_cascade(label='刷新', command=get_data)
-    # menubar.add_cascade(label='test_insert', command=test_insert)
-    # menubar.add_cascade(label='test_update', command=test_update)
     rootWindow.config(menu=menubar)
 
 
@@ -266,8 +263,8 @@ def insert_tree_view(up_info_list):
 
 
 # 更新计数文本
-def update_label_text():
-    labelText.set("已经自动执行了" + str(autoTaskCount) + "次监控刷新")
+def update_label_text(text):
+    labelText.set(text)
 
 
 # 清空列表视图
@@ -298,6 +295,12 @@ def get_item_from_list(mid, up_info_list) -> Optional[Any]:
         if up_info['mid'] == mid:
             return up_info
     return None
+
+
+# 关闭时停止全部任务
+def destroy_window():
+    stop_schedule_task()
+    rootWindow.destroy()
 
 
 # TEST
