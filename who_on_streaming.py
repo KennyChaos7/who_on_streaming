@@ -299,7 +299,8 @@ def get_item_from_list(mid, up_info_list) -> Optional[Any]:
 
 # 关闭时停止全部任务
 def destroy_window():
-    stop_schedule_task()
+    if thread.is_alive():
+        stop_schedule_task()
     rootWindow.destroy()
 
 
