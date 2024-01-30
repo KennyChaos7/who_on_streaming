@@ -5,6 +5,28 @@ import time
 import requests
 import os
 
+from typing import Tuple
+
+os.environ['NO_PROXY'] = 'https://api.bilibili.com'
+# reqHeaders = {
+#     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+#     'Content-Encoding': 'gzip',
+#     'Accept': 'application/json',
+#     'Accept-Language': 'zh-CN,zh;q=0.9',
+#     'Connection': 'close'
+# }
+reqHeaders = {
+        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+        'referer': 'https://www.bilibili.com',
+        'Accept-Encoding': 'utf-8',
+        'Accept-Language': 'zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en;q=0.3,en-US;q=0.2',
+        'Accept': 'application/json, text/plain, */*',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Origin': 'https://www.bilibili.com',
+        'Pragma': 'no-cache'
+    }
+
 mixinKeyEncTab = [
     46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49,
     33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13, 37, 48, 7, 16, 24, 55, 40,
@@ -12,20 +34,16 @@ mixinKeyEncTab = [
     36, 20, 34, 44, 52
 ]
 
-
-os.environ['NO_PROXY'] = 'https://api.bilibili.com'
-reqHeaders = {
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
-    'Content-Encoding': 'gzip',
-    'Accept': 'application/json',
-    'Accept-Language': 'zh-CN,zh;q=0.9',
-    'Connection': 'close'
+b_3 = requests.get("https://api.bilibili.com/x/frontend/finger/spi", headers=reqHeaders).json()['data']['b_3']
+cookies = {
+    'buvid3': b_3,
+    # 'buvid4': b_4
 }
-
 
 def getMixinKey(orig: str):
     '对 imgKey 和 subKey 进行字符顺序打乱编码'
     return reduce(lambda s, i: s + orig[i], mixinKeyEncTab, '')[:32]
+
 
 def encWbi(params: dict, img_key: str, sub_key: str):
     '为请求参数进行 wbi 签名'
@@ -46,8 +64,7 @@ def encWbi(params: dict, img_key: str, sub_key: str):
 
 
 def getWbiKeys():
-    '获取最新的 img_key 和 sub_key'
-    resp = requests.get('https://api.bilibili.com/x/web-interface/nav')
+    resp = requests.get('https://api.bilibili.com/x/web-interface/nav', headers=reqHeaders, cookies=cookies)
     resp.raise_for_status()
     json_content = resp.json()
     img_url: str = json_content['data']['wbi_img']['img_url']
@@ -56,10 +73,14 @@ def getWbiKeys():
     sub_key = sub_url.rsplit('/', 1)[1].split('.')[0]
     return img_key, sub_key
 
+def get_access_spi():
+    resp = requests.get("https://api.bilibili.com/x/frontend/finger/spi", headers=reqHeaders)
+    json_content = resp.json()['data']
+    return json_content['b_3'], json_content['b_4']
+
 
 def get_wts_w_rid():
     img_key, sub_key = getWbiKeys()
-
     signed_params = encWbi(
         params={
             'foo': '114',
@@ -83,7 +104,7 @@ def get_acc_info(mid: str):
         'w_rid': w_rid,
         'wts': wts
     }
-    response = requests.get(url=reqUrl, params=req_params, headers=reqHeaders)
+    response = requests.get(url=reqUrl, params=req_params, headers=reqHeaders, cookies=cookies)
     print(response.json())
     return response
 
