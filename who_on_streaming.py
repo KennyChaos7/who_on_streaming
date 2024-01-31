@@ -1,3 +1,4 @@
+import json
 import os
 import threading
 import time
@@ -75,7 +76,7 @@ thread = GetDataThread(name="get_data", id=1)
 
 # 通过单一mid查询用户信息
 def search_one_by_mid(mid: str) -> Optional[Liver]:
-    response = wbi.get_acc_info(mid=mid)
+    response = wbi.get_acc_info(mid=int(mid))
     print(response.json())
     if response.json()['code'] == 0:
         data_json = response.json()['data']
@@ -103,10 +104,10 @@ def search_multi_by_mid(mids_list: list) -> Optional[list]:
     if response.json()['code'] == 0:
         up_info_list = []
         rsp_json = response.json()
-        data_json = rsp_json['data']
+        data_json = dict(rsp_json['data'])
         for mid in mids_list:
-            if mid in data_json:
-                room_json = data_json[mid]
+            if str(mid) in data_json:
+                room_json = data_json[str(mid)]
                 is_on_streaming = False
                 if room_json['live_status'] == 1:
                     is_on_streaming = True
@@ -131,7 +132,7 @@ def get_all_mids_from_file():
     with open(iniPath) as f:
         str_line = f.readline().replace("\n", '')
         while len(str_line) > 0:
-            mids_list.append(str_line)
+            mids_list.append(int(str_line))
             mids_str += (str_line + ',')
             str_line = f.readline().replace("\n", '')
     return mids_str[:-1], mids_list
@@ -325,6 +326,6 @@ if __name__ == '__main__':
     # get_all_mids_str_from_file()
     # search_one_by_mid('117906')
     # str_l = list()
-    # str_l.append("117906")
+    # str_l.append(117906)
     # search_multi_by_mid(str_l)
     # create_pop_up_window("aaaa", "asdjkasdhaksdhaksdhaskdhkasdhlada")
