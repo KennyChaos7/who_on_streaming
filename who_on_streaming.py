@@ -193,14 +193,18 @@ def show_message_content(event):
 # 创建窗口载体
 def create_window():
     rootWindow.title("看看谁在直播")
-    rootWindow.geometry('420x260')
+    rootWindow.geometry('450x300')
     rootWindow.bind("<Destroy>", rootWindow.destroy)
     rootWindow.protocol("WM_DELETE_WINDOW", destroy_window)
     create_menu()
     create_tree_view()
     label = Label(rootWindow, textvariable=labelText)
     # label.config(font=("Courier", 14))
-    label.grid()
+    label.pack()
+    vertical_bar = ttk.Scrollbar(rootWindow, orient="vertical", command=treeView.yview)
+    treeView.configure(yscrollcommand=vertical_bar.set)
+    vertical_bar.pack(side='right', fill='y')
+    treeView.pack(side='left', fill='both', expand=True)
     rootWindow.mainloop()
 
 
@@ -257,10 +261,10 @@ def insert_tree_view(up_info_list):
             for checked in checkedList:
                 if up_info['mid'] == checked:
                     treeView.change_state(item=up_info['mid'], state='checked')
-            treeView.grid()
+            treeView.pack()
     else:
         treeView.insert('', 'end', values=['---', errorMsg, errorCode, ' ---- '])
-        treeView.grid()
+        treeView.pack()
 
 
 # 更新计数文本
@@ -311,14 +315,14 @@ def test_insert():
     treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', 123])
     treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', 123])
     treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', 123])
-    treeView.grid()
+    treeView.pack()
 def test_update():
     clear_tree_view()
     treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, '直播中', 123])
     treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', 123])
     treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', 123])
     treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', 123])
-    treeView.grid()
+    treeView.pack()
 
 
 if __name__ == '__main__':
