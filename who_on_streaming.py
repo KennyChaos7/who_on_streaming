@@ -9,6 +9,7 @@ from ttkwidgets import CheckboxTreeview
 from typing import Optional, Any
 import schedule
 import wbi
+import pyperclip
 
 
 # 线程类
@@ -32,11 +33,12 @@ class GetDataThread(threading.Thread):
 # up主类
 class Liver:
     # （up名称，mid/uid，是否已经开播，直播房间号）
-    def __init__(self, name, mid, is_on_streaming, room_id):
+    def __init__(self, name, mid, is_on_streaming, room_id, title):
         self.name = name
         self.mid = mid
         self.is_on_streaming = is_on_streaming
         self.room_id = room_id
+        self.title = title
 
     def __str__(self):
         return """
@@ -44,9 +46,10 @@ class Liver:
             "name":"%s",
             "mid":"%s",
             "is_on_streaming":"%s",
-            "room_id":"%s"
+            "room_id":"%s",
+            "title":"%s"
         }
-        """ % (self.name, self.mid, self.is_on_streaming, self.room_id)
+        """ % (self.name, self.mid, self.is_on_streaming, self.room_id, self.title)
 
     def __repr__(self):
         return self.name
@@ -83,11 +86,13 @@ def search_one_by_mid(mid: str) -> Optional[Liver]:
         room_json = data_json['live_room']
         is_on_streaming = False
         room_id = "-1"
+        title = ""
         if room_json is not None and room_json['roomStatus'] == 1:
             room_id = room_json['roomid']
+            title = room_json['title']
             if room_json['liveStatus'] == 1:
                 is_on_streaming = True
-        up_info = Liver(data_json['name'], data_json['mid'], is_on_streaming, room_id)
+        up_info = Liver(data_json['name'], data_json['mid'], is_on_streaming, room_id, title)
         print(up_info)
         return up_info
     else:
@@ -111,7 +116,7 @@ def search_multi_by_mid(mids_list: list) -> Optional[list]:
                 is_on_streaming = False
                 if room_json['live_status'] == 1:
                     is_on_streaming = True
-                up_info = Liver(room_json['uname'], str(room_json['uid']), is_on_streaming, str(room_json['room_id']))
+                up_info = Liver(room_json['uname'], str(room_json['uid']), is_on_streaming, str(room_json['room_id']), room_json['title'])
                 print(up_info)
                 up_info_list.append(up_info)
         return up_info_list
@@ -187,7 +192,10 @@ def stop_schedule_task():
 def show_message_content(event):
     for item in treeView.selection():
         up_info = treeView.item(item, "values")
-        messagebox.showinfo("直播房间号", up_info[4])
+        print(up_info)
+        result = messagebox.askquestion(title="", message="\" " + up_info[1] + " \"正在播《 " + up_info[5] + " 》，\n 是否直接将房间号复制到剪切板中", type=messagebox.OKCANCEL)
+        if result:
+            pyperclip.copy(up_info[4])
 
 
 # 创建窗口载体
@@ -255,7 +263,7 @@ def insert_tree_view(up_info_list):
                 is_on_streaming = '该up没有开通直播'
             elif up_info['is_on_streaming']:
                 is_on_streaming = '直播中'
-            item = [index, up_info['name'], up_info['mid'], is_on_streaming, up_info['room_id']]
+            item = [index, up_info['name'], up_info['mid'], is_on_streaming, up_info['room_id'], up_info['title']]
             index = index + 1
             treeView.insert('', 'end', iid=up_info['mid'], values=item)
             for checked in checkedList:
@@ -309,27 +317,5 @@ def destroy_window():
     rootWindow.destroy()
 
 
-# TEST
-def test_insert():
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', 123])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', 123])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', 123])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', 123])
-    treeView.pack()
-def test_update():
-    clear_tree_view()
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, '直播中', 123])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', 123])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', 123])
-    treeView.insert('', 'end', values=[len(treeView.get_children()), errorMsg, errorCode, ' ---- ', 123])
-    treeView.pack()
-
-
 if __name__ == '__main__':
     create_window()
-    # get_all_mids_str_from_file()
-    # search_one_by_mid('117906')
-    # str_l = list()
-    # str_l.append(117906)
-    # search_multi_by_mid(str_l)
-    # create_pop_up_window("aaaa", "asdjkasdhaksdhaksdhaskdhkasdhlada")
